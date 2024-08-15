@@ -1,8 +1,8 @@
 use pyo3::prelude::*;
 pub use taskchampion::Status as TCStatus;
 
-#[pyclass]
-#[derive(Clone, Copy)]
+#[pyclass(eq, eq_int)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Status {
     Pending,
     Completed,

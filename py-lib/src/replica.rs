@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::status::Status;
 use crate::{DependencyMap, Task, WorkingSet};
 use pyo3::prelude::*;
 use taskchampion::storage::{InMemoryStorage, SqliteStorage};
@@ -37,12 +36,6 @@ impl Replica {
     }
     /// Create a new task
     /// The task must not already exist.
-    pub fn new_task(&mut self, status: Status, description: String) -> anyhow::Result<Task> {
-        Ok(self
-            .0
-            .new_task(status.into(), description)
-            .map(|t| Task(t))?)
-    }
 
     /// Get a list of all uuids for tasks in the replica.
     pub fn all_task_uuids(&mut self) -> anyhow::Result<Vec<String>> {
@@ -60,17 +53,6 @@ impl Replica {
             .into_iter()
             .map(|(key, value)| (key.to_string(), Task(value)))
             .collect())
-    }
-
-    pub fn update_task(
-        &mut self,
-        uuid: String,
-        property: String,
-        value: Option<String>,
-    ) -> anyhow::Result<HashMap<String, String>> {
-        let uuid = Uuid::parse_str(&uuid)?;
-
-        Ok(self.0.update_task(uuid, property, value)?)
     }
 
     pub fn working_set(&mut self) -> anyhow::Result<WorkingSet> {
@@ -98,21 +80,12 @@ impl Replica {
             .map(|opt| opt.map(|t| Task(t)))?)
     }
 
-    pub fn import_task_with_uuid(&mut self, uuid: String) -> anyhow::Result<Task> {
-        Ok(self
-            .0
-            .import_task_with_uuid(Uuid::parse_str(&uuid).unwrap())
-            .map(|task| Task(task))?)
-    }
     pub fn sync(&self, _avoid_snapshots: bool) {
         todo!()
     }
 
     pub fn rebuild_working_set(&mut self, renumber: bool) -> anyhow::Result<()> {
         Ok(self.0.rebuild_working_set(renumber)?)
-    }
-    pub fn add_undo_point(&mut self, force: bool) -> anyhow::Result<()> {
-        Ok(self.0.add_undo_point(force)?)
     }
     pub fn num_local_operations(&mut self) -> anyhow::Result<usize> {
         Ok(self.0.num_local_operations()?)

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{status::Status, Annotation, Tag};
 use pyo3::prelude::*;
 use taskchampion::Task as TCTask;
@@ -26,9 +24,6 @@ impl Task {
         self.0.get_status().into()
     }
 
-    pub fn get_taskmap(&self) -> HashMap<String, String> {
-        self.0.get_taskmap().clone()
-    }
     /// Get the entry timestamp for a task
     ///
     /// Returns:
