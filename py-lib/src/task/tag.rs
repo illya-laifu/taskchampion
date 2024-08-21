@@ -20,3 +20,9 @@ impl Tag {
         self.0.is_user()
     }
 }
+
+impl From<Tag> for TCTag {
+    fn from(value: Tag) -> Self {
+        value.0
+    }
+}

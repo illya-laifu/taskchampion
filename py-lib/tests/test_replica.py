@@ -1,4 +1,4 @@
-from taskchampion import Replica, Status
+from taskchampion import Replica, Status, Operation
 import pytest
 
 from pathlib import Path
@@ -15,6 +15,7 @@ def empty_replica(tmp_path: Path) -> Replica:
 
 @pytest.fixture
 def replica_with_tasks(empty_replica: Replica):
+    empty_replica.create_task()
     empty_replica.new_task(Status.Pending, "Task 1")
     empty_replica.new_task(Status.Pending, "Task 2")
 
@@ -32,8 +33,10 @@ def test_constructor_throws_error_with_missing_database(tmp_path: Path):
         Replica(str(tmp_path), False)
 
 
-def test_new_task(empty_replica: Replica):
-    empty_replica.new_task(Status.Completed, "This is a desription")
+def test_create_task(empty_replica: Replica):
+    u = uuid.uuid4()
+    _, op = empty_replica.create_task(str(u))
+    empty_replica.commit_operations([op])
 
     tasks = empty_replica.all_task_uuids()
 
