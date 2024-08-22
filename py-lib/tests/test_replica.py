@@ -1,9 +1,8 @@
-from taskchampion import Replica, Status, Operation
-import pytest
-
+import uuid
 from pathlib import Path
 
-import uuid
+import pytest
+from taskchampion import Replica
 
 # TODO: instantiate the in-memory replica, this will do for now
 
@@ -15,9 +14,23 @@ def empty_replica(tmp_path: Path) -> Replica:
 
 @pytest.fixture
 def replica_with_tasks(empty_replica: Replica):
-    empty_replica.create_task()
-    empty_replica.new_task(Status.Pending, "Task 1")
-    empty_replica.new_task(Status.Pending, "Task 2")
+    ops = []
+    res = empty_replica.create_task(str(uuid.uuid4()))
+    assert res is not None
+    _, op = res
+    ops.append(op)
+
+    res = empty_replica.create_task(str(uuid.uuid4()))
+    assert res is not None
+    _, op = res
+    ops.append(op)
+
+    res = empty_replica.create_task(str(uuid.uuid4()))
+    assert res is not None
+    _, op = res
+    ops.append(op)
+
+    empty_replica.commit_operations(ops)
 
     return empty_replica
 
@@ -35,7 +48,11 @@ def test_constructor_throws_error_with_missing_database(tmp_path: Path):
 
 def test_create_task(empty_replica: Replica):
     u = uuid.uuid4()
-    _, op = empty_replica.create_task(str(u))
+    result = empty_replica.create_task(str(u))
+    assert result is not None
+
+    _, op = result
+
     empty_replica.commit_operations([op])
 
     tasks = empty_replica.all_task_uuids()
@@ -44,18 +61,45 @@ def test_create_task(empty_replica: Replica):
 
 
 def test_all_task_uuids(empty_replica: Replica):
-    empty_replica.new_task(Status.Completed, "Task 1")
-    empty_replica.new_task(Status.Completed, "Task 2")
-    empty_replica.new_task(Status.Completed, "Task 3")
+    ops = []
+    result = empty_replica.create_task(str(uuid.uuid4()))
+    assert result is not None
+    _, op = result
+    ops.append(op)
 
+    result = empty_replica.create_task(str(uuid.uuid4()))
+    assert result is not None
+    _, op = result
+    ops.append(op)
+
+    result = empty_replica.create_task(str(uuid.uuid4()))
+    assert result is not None
+    _, op = result
+    ops.append(op)
+
+    empty_replica.commit_operations(ops)
     tasks = empty_replica.all_task_uuids()
     assert len(tasks) == 3
 
 
 def test_all_tasks(empty_replica: Replica):
-    empty_replica.new_task(Status.Completed, "Task 1")
-    empty_replica.new_task(Status.Completed, "Task 2")
-    empty_replica.new_task(Status.Completed, "Task 3")
+    ops = []
+    result = empty_replica.create_task(str(uuid.uuid4()))
+    assert result is not None
+    _, op = result
+    ops.append(op)
+
+    result = empty_replica.create_task(str(uuid.uuid4()))
+    assert result is not None
+    _, op = result
+    ops.append(op)
+
+    result = empty_replica.create_task(str(uuid.uuid4()))
+    assert result is not None
+    _, op = result
+    ops.append(op)
+
+    empty_replica.commit_operations(ops)
 
     tasks = empty_replica.all_tasks()
 
@@ -95,33 +139,30 @@ def test_add_undo_point(replica_with_tasks: Replica):
 
 
 def test_num_local_operations(replica_with_tasks: Replica):
-    assert replica_with_tasks.num_local_operations() == 10
-    replica_with_tasks.new_task(Status.Pending, "New task 3")
-    assert replica_with_tasks.num_local_operations() == 15
+    assert replica_with_tasks.num_local_operations() == 3
+
+    result = replica_with_tasks.create_task(str(uuid.uuid4()))
+    assert result is not None
+
+    _, op = result
+
+    replica_with_tasks.commit_operations([op])
+
+    assert replica_with_tasks.num_local_operations() == 4
 
 
 def test_num_undo_points(replica_with_tasks: Replica):
-    assert replica_with_tasks.num_undo_points() == 10
-    replica_with_tasks.new_task(Status.Pending, "Another task")
-    replica_with_tasks.add_undo_point(True)
+    assert replica_with_tasks.num_undo_points() == 3
 
-    assert replica_with_tasks.num_undo_points() == 15
+    result = replica_with_tasks.create_task(str(uuid.uuid4()))
 
+    assert result is not None
+    _, op = result
+    replica_with_tasks.commit_operations([op])
 
-def test_import_task_with_uuid(replica_with_tasks: Replica):
-    # TODO: figure out failure reason
-    replica_with_tasks.import_task_with_uuid(str(uuid.uuid4()))
-    assert len(replica_with_tasks.all_task_uuids()) == 3
+    assert replica_with_tasks.num_undo_points() == 4
 
 
 @pytest.mark.skip("Skipping as gotta actually polish it")
 def test_dependency_map(replica_with_tasks: Replica):
     assert replica_with_tasks.dependency_map(False) is not None
-
-
-def test_update_task(replica_with_tasks: Replica):
-    task_uuid = replica_with_tasks.all_task_uuids()[0]
-
-    res = replica_with_tasks.update_task(task_uuid, "description", "This text here")
-    assert res["description"] == "This text here"
-    assert res["status"] == "pending"

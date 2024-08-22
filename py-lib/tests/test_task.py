@@ -1,69 +1,105 @@
 from taskchampion import Task, Replica, Status, Tag
 import pytest
-from uuid import UUID
+import uuid
 
 
 @pytest.fixture
 def new_task(tmp_path):
     r = Replica(str(tmp_path), True)
-    task = r.new_task(Status.Pending, "Task 1")
+    result = r.create_task(str(uuid.uuid4()))
+
+    assert result is not None
+    task, op = result
+    r.commit_operations([op])
+
     return task
 
 
 @pytest.fixture
 def waiting_task(tmp_path):
     r = Replica(str(tmp_path), True)
-    task = r.new_task(Status.Pending, "Task 1")
-    uuid = task.get_uuid()
-    r.update_task(uuid, "priority", "10")
+    result = r.create_task(str(uuid.uuid4()))
+
+    assert result is not None
+    task, op = result
+    r.commit_operations([op])
+
+    ops = []
+    op = task.set_priority("10")
+    assert op is not None
+    ops.append(op)
+
     # Fragile test, but I cannot mock Rust's Chrono, so this will do.
     # This is the largest possible unix timestamp, so the tests should work
     # until 2038 o7
-    r.update_task(uuid, "wait", "2147483647")
-    r.update_task(uuid, "tag", "sample_tag")
+    op = task.set_wait("2147483647")
+    assert op is not None
+    ops.append(op)
+
+    op = task.add_tag(Tag("example_tag"))
+    assert op is not None
+    ops.append(op)
+    r.commit_operations(ops)
+
     # Need to refresh the tag, the one that's in memory is stale
-    task = r.get_task(uuid)
+    task = r.get_task(task.get_uuid())
+    assert task is not None
+
     return task
 
 
 @pytest.fixture
 def started_task(tmp_path):
     r = Replica(str(tmp_path), True)
-    task = r.new_task(Status.Pending, "Task 1")
-    uuid = task.get_uuid()
-    r.update_task(uuid, "start", "1147483647")
+
+    ops = []
+    result = r.create_task(str(uuid.uuid4()))
+    assert result is not None
+    task, op = result
+    ops.append(op)
+
+    op = task.start()
+    assert result is not None
+    ops.append(op)
+
+    r.commit_operations(ops)
     # Need to refresh the tag, the one that's in memory is stale
-    task = r.get_task(uuid)
+    task = r.get_task(task.get_uuid())
+
     return task
 
 
 @pytest.fixture
 def blocked_task(tmp_path):
     r = Replica(str(tmp_path), True)
-    task = r.new_task(Status.Pending, "Task 1")
-    uuid = task.get_uuid()
-    r.update_task(uuid, "start", "1147483647")
+    task = r.create_task(str(uuid.uuid4()))
+
     # Fragile test, but I cannot mock Rust's Chrono, so this will do.
     # Need to refresh the tag, the one that's in memory is stale
-    task = r.get_task(uuid)
     return task
 
 
 @pytest.fixture
 def due_task(tmp_path):
     r = Replica(str(tmp_path), True)
-    task = r.new_task(Status.Pending, "Task 1")
-    uuid = task.get_uuid()
-    r.update_task(uuid, "due", "1147483647")
+    ops = []
+    result = r.create_task(str(uuid.uuid4()))
+    assert result is not None
+    task, op = result
+    ops.append(op)
+
+    task.set_due("123123")
     # Need to refresh the tag, the one that's in memory is stale
-    task = r.get_task(uuid)
+
     return task
 
 
 def test_get_uuid(new_task: Task):
-    uuid = new_task.get_uuid()
+    task_uuid = new_task.get_uuid()
     assert uuid is not None
-    UUID(uuid)  # This tests that the UUID is valid, it raises exception if not
+
+    # This tests that the UUID is valid, it raises exception if not
+    uuid.UUID(task_uuid)
 
 
 @pytest.mark.skip("This could be a bug")
