@@ -1,13 +1,26 @@
 from taskchampion import Replica, Status, WorkingSet
 from pathlib import Path
 import pytest
+import uuid
+
+import ipdb
 
 
 @pytest.fixture
 def working_set(tmp_path: Path):
+    ipdb.set_trace()
     r = Replica(str(tmp_path), True)
-    r.new_task(Status.Pending, "Task 1")
-    r.new_task(Status.Pending, "Task 2")
+    ops = []
+    result = r.create_task(str(uuid.uuid4()))
+    assert result is not None
+    task, op = result
+    ops.append(op)
+
+    result = r.create_task(str(uuid.uuid4()))
+    assert result is not None
+    task, op = result
+    ops.append(op)
+    r.commit_operations(ops)
 
     return r.working_set()
 

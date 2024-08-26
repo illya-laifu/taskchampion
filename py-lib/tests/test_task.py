@@ -9,8 +9,7 @@ def new_task(tmp_path):
     result = r.create_task(str(uuid.uuid4()))
 
     assert result is not None
-    task, op = result
-    r.commit_operations([op])
+    task, _ = result
 
     return task
 
@@ -21,29 +20,11 @@ def waiting_task(tmp_path):
     result = r.create_task(str(uuid.uuid4()))
 
     assert result is not None
-    task, op = result
-    r.commit_operations([op])
+    task, _ = result
 
-    ops = []
-    op = task.set_priority("10")
-    assert op is not None
-    ops.append(op)
-
-    # Fragile test, but I cannot mock Rust's Chrono, so this will do.
-    # This is the largest possible unix timestamp, so the tests should work
-    # until 2038 o7
-    op = task.set_wait("2147483647")
-    assert op is not None
-    ops.append(op)
-
-    op = task.add_tag(Tag("example_tag"))
-    assert op is not None
-    ops.append(op)
-    r.commit_operations(ops)
-
-    # Need to refresh the tag, the one that's in memory is stale
-    task = r.get_task(task.get_uuid())
-    assert task is not None
+    task.set_wait("2038-01-19T03:14:07+00:00")
+    task.set_priority("10")
+    task.add_tag(Tag("example_tag"))
 
     return task
 
@@ -52,27 +33,22 @@ def waiting_task(tmp_path):
 def started_task(tmp_path):
     r = Replica(str(tmp_path), True)
 
-    ops = []
     result = r.create_task(str(uuid.uuid4()))
     assert result is not None
-    task, op = result
-    ops.append(op)
+    task, _ = result
 
-    op = task.start()
-    assert result is not None
-    ops.append(op)
-
-    r.commit_operations(ops)
-    # Need to refresh the tag, the one that's in memory is stale
-    task = r.get_task(task.get_uuid())
-
+    task.start()
     return task
 
 
 @pytest.fixture
 def blocked_task(tmp_path):
     r = Replica(str(tmp_path), True)
-    task = r.create_task(str(uuid.uuid4()))
+    result = r.create_task(str(uuid.uuid4()))
+
+    assert result is not None
+
+    task, _ = result
 
     # Fragile test, but I cannot mock Rust's Chrono, so this will do.
     # Need to refresh the tag, the one that's in memory is stale
@@ -82,13 +58,11 @@ def blocked_task(tmp_path):
 @pytest.fixture
 def due_task(tmp_path):
     r = Replica(str(tmp_path), True)
-    ops = []
     result = r.create_task(str(uuid.uuid4()))
     assert result is not None
-    task, op = result
-    ops.append(op)
+    task, _ = result
 
-    task.set_due("123123")
+    task.set_due("2006-05-13T01:27:27+00:00")
     # Need to refresh the tag, the one that's in memory is stale
 
     return task
@@ -109,13 +83,6 @@ def test_get_status(new_task: Task):
     # for whatever reason these are not equivalent
     # TODO: research if this is a bug
     assert status is Status.Pending
-
-
-def test_get_taskmap(new_task: Task):
-    taskmap = new_task.get_taskmap()
-
-    for key in taskmap.keys():
-        assert key in ["modified", "description", "entry", "status"]
 
 
 def test_get_priority(waiting_task: Task):

@@ -8,15 +8,6 @@ use taskchampion::{Operation as TCOperation, Uuid};
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Operation(pub(crate) TCOperation);
 
-// TODO: better object construction in python - maybe create separate objects for each Operation
-// that get transformed into Rust's Operation in python, since pyo3 only supports unit variants
-// With the respetive arguments:
-//
-// - Create(uuid: str)
-// - Delete(uuid: str, old_task: TaskMap)
-// - Update(uuid: str, property: str, old_value: str| None, value: str | None, timestamp: str)
-// - UndoPoint()
-
 #[pymethods]
 impl Operation {
     #[allow(non_snake_case)]
